@@ -55,7 +55,15 @@ export const usePostStore = defineStore('postStore', {
 
         async editPost(updatedPost: Post) {
             try {
-                console.log('Editing post:', updatedPost);
+                if (updatedPost.id > 100) {
+                    // Редактируем пост только локально
+                    const index = this.posts.findIndex((post) => post.id === updatedPost.id);
+                    if (index !== -1) {
+                        this.posts[index] = { ...updatedPost }; // Обновляем локальный массив
+                    }
+                    console.log('Post edited locally:', updatedPost);
+                    return;
+                }
 
                 const response = await axios.put<Post>(
                     `https://jsonplaceholder.typicode.com/posts/${updatedPost.id}`,
@@ -66,11 +74,9 @@ export const usePostStore = defineStore('postStore', {
                     }
                 );
 
-                console.log('Server response:', response.data);
-
                 const index = this.posts.findIndex((post) => post.id === updatedPost.id);
                 if (index !== -1) {
-                    this.posts[index] = response.data;
+                    this.posts[index] = response.data; // Обновляем локальное состояние
                 }
             } catch (error) {
                 console.error('Edit post failed:', error);
@@ -80,12 +86,21 @@ export const usePostStore = defineStore('postStore', {
 
         async deletePost(postId: number) {
             try {
-                await axios.delete(`https://jsonplaceholder.typicode.com/posts/${postId}`);
-                this.posts = this.posts.filter((post) => post.id !== postId); // Удаляем пост из локального массива
+              // Проверяем, это локальный пост или серверный
+              if (postId > 100) {
+                // Удаляем локально созданный пост
+                this.posts = this.posts.filter((post) => post.id !== postId);
+                console.log('Local post deleted:', postId);
+                return;
+              }
+          
+              // Удаляем пост с сервера
+              await axios.delete(`https://jsonplaceholder.typicode.com/posts/${postId}`);
+              this.posts = this.posts.filter((post) => post.id !== postId);
             } catch (error) {
-                console.error('Delete post failed:', error);
-                this.error = 'Failed to delete post.';
+              console.error('Delete post failed:', error);
+              this.error = 'Failed to delete post.';
             }
-        },
+          },
     },
 });
